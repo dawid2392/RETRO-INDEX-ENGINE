@@ -1,30 +1,31 @@
 from django.db import transaction
-from core.models import Source, Entity
+from core.models import Source, Entity, IdentityProfile
 
 class IngestionService:
     @staticmethod
-    def ingest_data(source_name, entity_type, raw_data):
+    def ingest_data(source_name, entity_type, value, profile_data=None):
         """
-        Aggregates and normalizes raw data into the system.
+        Aggregates and normalizes data into the system, optionally linking it to an IdentityProfile.
         """
         with transaction.atomic():
             source, _ = Source.objects.get_or_create(name=source_name)
             
-            # Simple normalization logic: assume raw_data is a dict
-            # In a real scenario, this would be more complex depending on source schema
-            identifier = raw_data.get('identifier')
-            if not identifier:
-                raise ValueError("Missing identifier in raw_data")
+            profile = None
+            if profile_data:
+                profile, _ = IdentityProfile.objects.get_or_create(
+                    full_name=profile_data.get('full_name', 'Unknown'),
+                    defaults={'description': profile_data.get('description', '')}
+                )
             
             entity, created = Entity.objects.get_or_create(
-                identifier=identifier,
                 entity_type=entity_type,
-                defaults={'source': source, 'metadata': raw_data.get('metadata', {})}
+                value=value,
+                source=source,
+                defaults={'profile': profile}
             )
             
-            if not created:
-                # Update existing entity metadata
-                entity.metadata.update(raw_data.get('metadata', {}))
+            if not created and profile:
+                entity.profile = profile
                 entity.save()
                 
             return entity
