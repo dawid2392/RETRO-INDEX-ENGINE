@@ -30,6 +30,10 @@ class Entity(models.Model):
     )
     entity_type = models.CharField(max_length=20, choices=ENTITY_TYPES)
     value = models.CharField(max_length=255, db_index=True)
+    # New Fields
+    photo_url = models.URLField(blank=True, null=True)
+    identifier_code = models.CharField(max_length=100, blank=True, null=True, db_index=True)
+    
     source = models.ForeignKey(Source, on_delete=models.CASCADE, related_name='entities')
     profile = models.ForeignKey(IdentityProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='entities')
     confidence_score = models.FloatField(default=1.0)
