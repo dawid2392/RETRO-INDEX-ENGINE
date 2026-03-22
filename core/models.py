@@ -28,3 +28,21 @@ class Entity(models.Model):
 
     def __str__(self):
         return f"{self.entity_type}: {self.value}"
+
+class Relationship(models.Model):
+    RELATIONSHIP_TYPES = (
+        ('OWNED_BY', 'Owned By'),
+        ('ASSOCIATED_WITH', 'Associated With'),
+        ('COMMUNICATED_WITH', 'Communicated With'),
+    )
+    source_entity = models.ForeignKey(Entity, on_delete=models.CASCADE, related_name='outbound_relationships')
+    target_entity = models.ForeignKey(Entity, on_delete=models.CASCADE, related_name='inbound_relationships')
+    relationship_type = models.CharField(max_length=20, choices=RELATIONSHIP_TYPES)
+    weight = models.FloatField(default=1.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('source_entity', 'target_entity', 'relationship_type')
+
+    def __str__(self):
+        return f"{self.source_entity} -[{self.relationship_type}]-> {self.target_entity}"
