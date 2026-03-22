@@ -1,7 +1,5 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard | {{ project_name }}{% endblock %}
-
 {% block content %}
 <div class="container mt-5">
     <div class="row">
@@ -11,7 +9,7 @@
                 <div class="card-body">
                     <h5 class="card-title">Welcome to the Management System</h5>
                     <p class="card-text">You are logged in as <strong>{{ user.username }}</strong>.</p>
-                    <a href="{% url 'logout' %}" class="btn btn-danger">Logout</a>
+                    <a href="{% url 'core:logout' %}" class="btn btn-danger">Logout</a>
                 </div>
             </div>
         </div>
