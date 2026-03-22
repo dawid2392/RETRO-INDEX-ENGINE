@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 <div class="container mt-5">
@@ -8,10 +9,10 @@
         <div class="col-md-12 mb-4">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">Quick Search</h5>
+                    <h5 class="card-title">Network Discovery</h5>
                     <form id="searchForm" class="input-group">
-                        <input type="text" id="searchInput" class="form-control" placeholder="Search for a person, email, or username...">
-                        <button class="btn btn-primary" type="submit">Search</button>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search for a name to map their network...">
+                        <button class="btn btn-primary" type="submit">Discover</button>
                     </form>
                 </div>
             </div>
@@ -22,43 +23,61 @@
         <div class="col-md-12">
             <div class="card shadow-sm">
                 <div class="card-body">
-                    <h5 class="card-title">People & Identities</h5>
-                    <div id="resultsArea">
-                        <p class="text-muted">Enter a search term to find entities.</p>
-                    </div>
+                    <h5 class="card-title">Network Visualization</h5>
+                    <div id="graphContainer" style="width: 100%; height: 500px; background: #f8f9fa; border: 1px solid #ddd;"></div>
                 </div>
             </div>
         </div>
     </div>
-
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <a href="{% url 'core:logout' %}" class="btn btn-outline-danger">Logout</a>
-        </div>
-    </div>
 </div>
 
+<script src="https://d3js.org/d3.v7.min.js"></script>
 <script>
 document.getElementById('searchForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const query = document.getElementById('searchInput').value;
-    const resultsArea = document.getElementById('resultsArea');
-    resultsArea.innerHTML = '<p>Searching...</p>';
+    const graphContainer = document.getElementById('graphContainer');
+    graphContainer.innerHTML = '<p class="p-3">Discovering network...</p>';
 
-    // Placeholder: In a real scenario, this would call your Django backend
-    fetch(`/api/search/?q=${encodeURIComponent(query)}`)
+    fetch(`{% url 'core:search_api' %}?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
-            resultsArea.innerHTML = data.map(item => `
-                <div class="d-flex align-items-center mb-3 p-3 border rounded">
-                    <div class="me-3" style="width: 50px; height: 50px; background: #ddd; border-radius: 50%;"></div>
-                    <div>
-                        <strong>${item.name}</strong><br>
-                        <small class="text-muted">${item.type}</small>
-                    </div>
-                </div>
-            `).join('');
+            graphContainer.innerHTML = ''; // clear
+            renderGraph(data);
         });
 });
+
+function renderGraph(data) {
+    const width = 800;
+    const height = 500;
+    const svg = d3.select("#graphContainer")
+                  .append("svg")
+                  .attr("width", "100%")
+                  .attr("height", "100%");
+
+    const simulation = d3.forceSimulation(data.nodes)
+        .force("link", d3.forceLink(data.links).id(d => d.id))
+        .force("charge", d3.forceManyBody())
+        .force("center", d3.forceCenter(width / 2, height / 2));
+
+    const link = svg.append("g")
+        .selectAll("line")
+        .data(data.links)
+        .enter().append("line")
+        .attr("stroke", "#999");
+
+    const node = svg.append("g")
+        .selectAll("circle")
+        .data(data.nodes)
+        .enter().append("circle")
+        .attr("r", 10)
+        .attr("fill", d => d.type === 'PERSON' ? 'red' : 'blue');
+
+    simulation.on("tick", () => {
+        link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+        node.attr("cx", d => d.x).attr("cy", d => d.y);
+    });
+}
 </script>
 {% endblock %}
