@@ -6,6 +6,7 @@
     .node-group { cursor: pointer; }
     .node-circle { stroke: #fff; stroke-width: 2px; }
     .node-text { font-size: 10px; pointer-events: none; }
+    #loader { display: none; }
 </style>
 
 <div class="container mt-5">
@@ -18,7 +19,12 @@
                     <h5 class="card-title">Network Discovery</h5>
                     <form id="searchForm" class="input-group">
                         <input type="text" id="searchInput" class="form-control" placeholder="Search for a name to map their network...">
-                        <button class="btn btn-primary" type="submit">Discover</button>
+                        <button class="btn btn-primary" id="searchBtn" type="submit">
+                            <span id="btnText">Discover</span>
+                            <div id="loader" class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </button>
                     </form>
                 </div>
             </div>
@@ -43,13 +49,32 @@ document.getElementById('searchForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const query = document.getElementById('searchInput').value;
     const graphContainer = d3.select("#graphContainer");
-    graphContainer.html('<p class="p-3">Discovering network...</p>');
+    const searchBtn = document.getElementById('searchBtn');
+    const btnText = document.getElementById('btnText');
+    const loader = document.getElementById('loader');
+
+    // UI Loading state
+    searchBtn.disabled = true;
+    btnText.textContent = "Searching...";
+    loader.style.display = "inline-block";
+    graphContainer.html('<p class="p-3 text-muted">Discovering network, please wait...</p>');
 
     fetch(`{% url 'core:search_api' %}?q=${encodeURIComponent(query)}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error("Search failed");
+            return response.json();
+        })
         .then(data => {
             graphContainer.html(''); // clear
             renderGraph(data);
+        })
+        .catch(err => {
+            graphContainer.html(`<p class="p-3 text-danger">Error: ${err.message}</p>`);
+        })
+        .finally(() => {
+            searchBtn.disabled = false;
+            btnText.textContent = "Discover";
+            loader.style.display = "none";
         });
 });
 
