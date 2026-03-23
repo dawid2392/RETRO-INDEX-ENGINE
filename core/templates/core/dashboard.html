@@ -59,7 +59,7 @@ document.getElementById('searchForm').addEventListener('submit', function(e) {
     loader.style.display = "inline-block";
     graphContainer.html('<p class="p-3 text-muted">Discovering network, please wait...</p>');
 
-    fetch(`{% url 'core:search_api' %}?q=${encodeURIComponent(query)}`)
+    fetch(`{% url 'core:search_api' %}?q=${encodeURIComponent(query)}`, { method: 'GET' })
         .then(response => {
             if (!response.ok) throw new Error("Search failed");
             return response.json();

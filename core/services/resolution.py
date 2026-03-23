@@ -2,7 +2,7 @@ import requests
 import logging
 from bs4 import BeautifulSoup
 from core.models import Entity, Relationship, Source
-from urllib.parse import urljoin, quote
+from urllib.parse import urljoin, quote, unquote
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class WebCrawler:
     def fetch_url(self, url):
         """Fetch URL, extract title, meta description, and top images."""
         try:
-            logger.info(f"Crawling page: {url}")
+            logger.info(f"CRAWLER: Fetching {url}")
             response = self.session.get(url, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
@@ -34,29 +34,33 @@ class WebCrawler:
             
             return {"title": title, "description": description}, images
         except Exception as e:
-            logger.warning(f"Crawling failed for {url}: {e}")
+            logger.error(f"CRAWLER ERROR: {url}: {e}")
             return None, []
 
     def search(self, query):
-        """Perform a Google search."""
-        search_url = f"https://www.google.com/search?q={quote(query)}"
+        """Perform a DuckDuckGo search."""
+        search_url = f"https://duckduckgo.com/html/?q={quote(query)}"
         try:
             response = self.session.get(search_url, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             
             results = []
-            for g in soup.select("div.g"):
-                title_elem = g.select_one("h3")
-                link_elem = g.select_one("a")
-                if title_elem and link_elem:
-                    url = link_elem.get("href")
-                    if url.startswith("/url?q="):
-                        url = url.split("/url?q=")[1].split("&")[0]
-                    results.append({"title": title_elem.get_text(), "url": url})
+            for res in soup.find_all("div", class_="result"):
+                a_tag = res.find("a", class_="result__a")
+                if a_tag and a_tag.get("href"):
+                    href = a_tag.get("href")
+                    # Extract real URL from DDG redirection
+                    url = ""
+                    if "uddg=" in href:
+                        url = unquote(href.split("uddg=")[1].split("&")[0])
+                    else:
+                        url = href
+                    
+                    results.append({"title": a_tag.get_text(), "url": url})
             return results
         except Exception as e:
-            logger.error(f"Search failed for {query}: {e}")
+            logger.error(f"SEARCH ERROR: {query}: {e}")
             return []
 
 class NetworkDiscoveryService:
@@ -96,7 +100,6 @@ class NetworkDiscoveryService:
 class EntityResolutionService:
     @staticmethod
     def resolve(data):
-        # Fallback to NetworkDiscoveryService for now
         query = data.get('query')
         if query:
             return NetworkDiscoveryService.perform_osint_search(query)
