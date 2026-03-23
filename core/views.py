@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.services.ingestion import IngestionService
 from core.services.resolution import EntityResolutionService
+from core.models import Entity, Relationship
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -62,5 +63,15 @@ def resolve_entities(request):
         data = json.loads(request.body)
         # Using EntityResolutionService as a placeholder for actual processing
         result = EntityResolutionService.resolve(data)
-        return JsonResponse({'status': 'success', 'result': result})
+        return JsonResponse({'status': 'success', 'result': str(result)})
     return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@login_required
+def get_graph_data(request):
+    entities = Entity.objects.all()[:50]
+    relationships = Relationship.objects.filter(source_entity__in=entities, target_entity__in=entities)
+    
+    nodes = [{'id': e.value, 'name': e.value, 'type': e.entity_type, 'size': 5} for e in entities]
+    links = [{'source': r.source_entity.value, 'target': r.target_entity.value, 'value': r.weight} for r in relationships]
+    
+    return JsonResponse({'nodes': nodes, 'links': links})

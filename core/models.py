@@ -17,6 +17,8 @@ class IdentityProfile(models.Model):
     profile_image_url = models.URLField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_seen = models.DateTimeField(auto_now=True)
+    metadata = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.full_name
@@ -39,6 +41,8 @@ class Entity(models.Model):
     confidence_score = models.FloatField(default=1.0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    last_seen = models.DateTimeField(auto_now=True)
+    metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name_plural = "Entities"

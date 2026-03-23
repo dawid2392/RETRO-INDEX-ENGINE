@@ -3,6 +3,7 @@ import logging
 from bs4 import BeautifulSoup
 from core.models import Entity, Relationship, Source
 from urllib.parse import urljoin, quote, unquote
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -66,35 +67,51 @@ class WebCrawler:
 class NetworkDiscoveryService:
     @staticmethod
     def perform_osint_search(query):
-        """Perform discovery using Web Crawling, extracting metadata and images."""
+        """Perform deep discovery, creating retroactive relationships."""
         crawler = WebCrawler()
         search_results = crawler.search(query)
         
         source, _ = Source.objects.get_or_create(name='Web Crawler Engine')
         person, _ = Entity.objects.get_or_create(entity_type='PERSON', value=query, source=source)
+        person.last_seen = timezone.now()
         
-        # Use first valid image found among search results if available
-        found_photo = None
-        
-        # Increase search limit to 6 and improve crawling logic
+        # Deep discovery: fetch related entities and link them
         for res in search_results[:6]:
             meta, images = crawler.fetch_url(res['url'])
-            
-            if images and not found_photo:
-                found_photo = images[0]
-            
             if meta:
+                # Store metadata in the entity
+                person.metadata.update({res['url']: meta['description']})
+                
                 associate_val = meta['title'] or res['title']
                 if associate_val and associate_val.lower() != query.lower():
+                    # Create associate entity
                     associate, _ = Entity.objects.get_or_create(
                         entity_type='PERSON', value=associate_val[:100], source=source
                     )
+                    associate.last_seen = timezone.now()
+                    associate.save()
+                    
+                    # Create relationship
                     Relationship.objects.get_or_create(
                         source_entity=person, target_entity=associate, 
-                        relationship_type='ASSOCIATED_WITH', weight=0.5
+                        relationship_type='ASSOCIATED_WITH', weight=0.7
                     )
+                    
+                    # Retroactive check: search associates to find further connections (level 2)
+                    second_degree = crawler.search(associate_val)
+                    for sec in second_degree[:2]:
+                        s_meta, _ = crawler.fetch_url(sec['url'])
+                        if s_meta and s_meta['title']:
+                            target_val = s_meta['title'][:100]
+                            if target_val.lower() != associate_val.lower():
+                                target, _ = Entity.objects.get_or_create(
+                                    entity_type='PERSON', value=target_val, source=source
+                                )
+                                Relationship.objects.get_or_create(
+                                    source_entity=associate, target_entity=target, 
+                                    relationship_type='ASSOCIATED_WITH', weight=0.3
+                                )
         
-        person.photo_url = found_photo or f"https://api.dicebear.com/7.x/initials/svg?seed={quote(query)}"
         person.save()
         return person
 
