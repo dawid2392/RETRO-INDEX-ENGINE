@@ -92,3 +92,12 @@ class NetworkDiscoveryService:
         person.photo_url = found_photo or f"https://api.dicebear.com/7.x/initials/svg?seed={quote(query)}"
         person.save()
         return person
+
+class EntityResolutionService:
+    @staticmethod
+    def resolve(data):
+        # Fallback to NetworkDiscoveryService for now
+        query = data.get('query')
+        if query:
+            return NetworkDiscoveryService.perform_osint_search(query)
+        return None
