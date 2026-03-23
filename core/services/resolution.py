@@ -76,7 +76,8 @@ class NetworkDiscoveryService:
         # Use first valid image found among search results if available
         found_photo = None
         
-        for res in search_results[:3]:  # Limit crawling to top 3
+        # Increase search limit to 6 and improve crawling logic
+        for res in search_results[:6]:
             meta, images = crawler.fetch_url(res['url'])
             
             if images and not found_photo:
@@ -86,7 +87,7 @@ class NetworkDiscoveryService:
                 associate_val = meta['title'] or res['title']
                 if associate_val and associate_val.lower() != query.lower():
                     associate, _ = Entity.objects.get_or_create(
-                        entity_type='PERSON', value=associate_val, source=source
+                        entity_type='PERSON', value=associate_val[:100], source=source
                     )
                     Relationship.objects.get_or_create(
                         source_entity=person, target_entity=associate, 
